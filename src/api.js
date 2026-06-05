@@ -1,4 +1,28 @@
-const API_URL = '/api/analyze'
+const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
+const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
+
+async function callClaude(prompt) {
+  if (!API_KEY) throw new Error('Chave da API não configurada. Adicione VITE_ANTHROPIC_API_KEY no Vercel.')
+
+  const res = await fetch(ANTHROPIC_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  const data = await res.json()
+  return (data.content || []).map(b => b.text || '').join('')
+}
 
 export async function analyzePortfolio(portfolio, profile) {
   const { positions, total, byCategory } = portfolio
@@ -55,15 +79,7 @@ Riscos específicos desta carteira que merecem atenção ou monitoramento.
 
 Seja direto, técnico, use os tickers. Não prometa retornos. Máximo 600 palavras.`
 
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] }),
-  })
-
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  const data = await res.json()
-  return (data.content || []).map(b => b.text || '').join('')
+  return callClaude(prompt)
 }
 
 export async function rebalancePortfolio(portfolio, profile, targets, rebalParams) {
@@ -106,26 +122,18 @@ ${rebalObs ? `- Orientações específicas: ${rebalObs}` : ''}
 Produza um plano com estas seções (### para títulos):
 
 ### Avaliação do alvo proposto
-Avalie se a alocação alvo faz sentido dado o perfil. Aponte se há algo a reconsiderar.
+Avalie se a alocação alvo faz sentido dado o perfil.
 
 ### Estratégia de transição
-Como executar a migração de forma eficiente considerando a estratégia escolhida (${strategy}).
+Como executar a migração considerando a estratégia escolhida (${strategy}).
 
 ### Ações prioritárias por ativo
-Liste ações específicas por ticker (comprar, reduzir, manter). Seja direto e objetivo.
+Liste ações específicas por ticker (comprar, reduzir, manter).
 
 ### Considerações tributárias
 Mencione IR, isenções para FIIs e ações abaixo de R$ 20.000/mês de venda.
 
 Máximo 500 palavras.`
 
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] }),
-  })
-
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  const data = await res.json()
-  return (data.content || []).map(b => b.text || '').join('')
+  return callClaude(prompt)
 }
